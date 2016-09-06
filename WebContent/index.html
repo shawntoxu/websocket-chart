@@ -1,0 +1,209 @@
+<html>
+    <head>
+        <meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+    </head>
+    <body>
+        <meta charset="utf-8">
+        <title>通过 sockets向前端发送实时数据做监控图</title>
+        <script language="javascript" type="text/javascript">
+            var wsUri = getRootUri() + "/TestWeb/hello";
+ 
+            function getRootUri() {
+                return "ws://" + (document.location.hostname == "" ? "localhost" : document.location.hostname) + ":" +
+                        (document.location.port == "" ? "8080" : document.location.port);
+            }
+ 
+            function init() {
+                output = document.getElementById("output");
+            }
+ 
+            function send_message() {
+ 
+                websocket = new WebSocket(wsUri);
+                websocket.onopen = function(evt) {
+                    onOpen(evt)
+                };
+                websocket.onmessage = function(evt) {
+                    onMessage(evt)
+                };
+                websocket.onerror = function(evt) {
+                    onError(evt)
+                };
+ 
+            }
+ 
+            function onOpen(evt) {
+                writeToScreen("Connected to Endpoint!");
+                doSend(textID.value);
+            }
+ 
+            function onMessage(evt) {
+                //writeToScreen("Message Received: " + evt.data);
+                dynamicData.push(evt);
+            	 /**var brand_chart = $("#container").highcharts();**/
+            	 //console.log(brand_chart.series[0]);
+            	 //console.log(brand_chart.xAxis);
+            	/** series=brand_chart.series[0] ;
+            	 console.log(series.data)
+            	 series.data = (function (){
+            		 
+            		 return dynamicData.shift() ;
+            	 })()**/
+	           /** var obj = dynamicData.shift();
+               if (typeof(obj) == "object") {
+                   series.addPoint([obj.x, obj.y], true, true);
+               }**/
+
+            	 //brand_chart.addSeries(evt);
+                
+            }
+ 
+            function onError(evt) {
+                writeToScreen('<span style="color: red;">ERROR:</span> ' + evt.data);
+            }
+ 
+            function doSend(message) {
+                writeToScreen("Message Sent: " + message);
+                websocket.send(message);
+            }
+ 
+            function writeToScreen(message) {
+            	
+                var pre = document.createElement("p");
+                pre.style.wordWrap = "break-word";
+                pre.innerHTML = message;
+                  
+                output.appendChild(pre);
+            	
+                
+            }
+ 
+            window.addEventListener("load", init, false);
+ 
+        </script>
+ 
+        <h1 style="text-align: center;">  Client test </h2>
+ 
+        <br>
+ 
+        <div style="text-align: center;">
+            <form action="">
+                <input onclick="send_message()" value="Send" type="button">
+                <input id="textID" name="message" value="Hello Socket!" type="text"><br>
+            </form>
+        </div>
+        <div id="output"></div>
+        
+        <div id="container" style="min-width:300x;height:400px"></div>
+        
+</body>
+<script src="jquery-1.8.3.min.js"></script>
+<script src="highcharts.js"></script>
+
+<script type="text/javascript">
+	//页面初始化完成后向服务器发送 数据
+	send_message();
+	
+    dynamicData    = []  ;
+	
+	$(function () {
+	    $(document).ready(function () {
+	        Highcharts.setOptions({
+	            global: {
+	                useUTC: false
+	            }
+	        });
+	        $('#container').highcharts({
+	            chart: {
+	                type: 'spline',
+	                animation: Highcharts.svg, // don't animate in old IE
+	                marginRight: 10,
+	                events: {
+	                    load: function () {
+	                        // set up the updating of the chart each second
+	                        var series = this.series[0];
+	                        setInterval(function () {
+	                          
+	                        	var obj = dynamicData.shift();
+	                        	var obj2 ;
+	                        	try {
+	                        		 obj2=JSON.parse(obj.data);
+	                        		//后端异常没有返回数据情况
+	                        	}catch (e){
+	                        		obj2 = {x:1472782689831,y:100};
+	                        	}
+	                        	
+	                        	
+	                          if (typeof(obj2) == "object") {
+	                                series.addPoint([obj2.x, obj2.y], true, true);
+	                                console.log("x=="+obj2.x);
+	                                //series.addPoint([1472782689831, 30], true, true);
+
+	                            }
+	                        	
+	                           /**var x = (new Date()).getTime(), // current time
+	                                y = Math.random();
+	                            series.addPoint([x, y], true, true);
+	                            console.log("x==");
+	                            console.log(x);
+	                            console.log("y==");
+	                            console.log(y);**/
+	                        }, 1000);
+	                        
+	                    }
+	                }
+	            },
+	            title: {
+	                text: 'from server'
+	            },
+	            xAxis: {
+	                type: 'datetime',
+	                tickPixelInterval: 150
+	            },
+	            yAxis: {
+	                title: {
+	                    text: 'Value'
+	                },
+	                plotLines: [{
+	                    value: 0,
+	                    width: 1,
+	                    color: '#64E572'
+	                }]
+	            },
+	            tooltip: {
+	                formatter: function () {
+	                    return '<b>' + this.series.name + '</b><br/>' +
+	                        Highcharts.dateFormat('%Y-%m-%d %H:%M:%S', this.x) + '<br/>' +
+	                        Highcharts.numberFormat(this.y, 2);
+	                }
+	            },
+	            legend: {
+	                enabled: false
+	            },
+	            exporting: {
+	                enabled: false
+	            },
+	            series: [{
+	                name: 'Random data',
+	                data: (function () {
+	                    // generate an array of random data
+	                    //初始化图形的开始数据点，后面的点由events 方法的setInterval 间隔1s产出
+	                    var data = [],
+	                        time = (new Date()).getTime(),
+	                        i;
+	                    for (i = -19; i <= 0; i += 1) {
+	                        data.push({
+	                            x: time + i * 1000,
+	                            y: Math.random()
+	                        });
+	                    }
+	                     //data = dynamicData ;
+	                    return data;
+	                }())
+	            }]// end series 
+	        });
+	    });
+	});
+
+</script>
+</html>
